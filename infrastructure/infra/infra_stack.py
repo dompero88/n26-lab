@@ -3,6 +3,7 @@ from aws_cdk import (
     aws_ec2 as ec2,
     aws_ecs as ecs,
     aws_ecs_patterns as ecs_patterns,
+    aws_ecr_assets as ecr_assets,  # <--- AGGIUNTO QUESTO IMPORT
 )
 from constructs import Construct
 
@@ -26,7 +27,8 @@ class InfraStack(Stack):
             task_image_options=ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
                 image=ecs.ContainerImage.from_asset(
                     "../app",
-                    platform="linux/amd64" # Forza build Intel/AMD64
+                    # USIAMO L'ENUM CORRETTO RICHIESTO DALL'ERRORE
+                    platform=ecr_assets.Platform.LINUX_AMD64 
                 ),
                 container_port=80,
                 environment={
