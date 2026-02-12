@@ -1,0 +1,46 @@
+name: N26 DevSecOps Pipeline
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+  deploy-to-aws:
+      needs: security-scan
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        
+        - name: Setup Python
+          uses: actions/setup-python@v4
+          with:
+            python-version: '3.9'
+  
+        - name: Install AWS CDK
+          run: npm install -g aws-cdk
+  
+        - name: Install Dependencies
+          working-directory: ./infrastructure
+          run: pip install -r requirements.txt
+            
+        - name: CDK Deploy
+          working-directory: ./infrastructure
+          run: cdk deploy --all --require-approval never
+          env:
+            AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            AWS_DEFAULT_REGION: "eu-central-1"
+

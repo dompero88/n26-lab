@@ -1,0 +1,13 @@
+# Python
+**/__pycache__/
+**/*.pyc
+.venv/
+infra/.venv/
+
+# AWS CDK
+infra/cdk.out/
+.cdk.staging/
+
+# Sistema
+.DS_Store
+*.lock
