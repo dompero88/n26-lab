@@ -38,8 +38,6 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           args: >
-            -Dsonar.sources=app
-            -Dsonar.tests=app/tests
             -Dsonar.python.coverage.reportPaths=app/coverage.xml
             -Dsonar.projectKey=n26-lab  
 
