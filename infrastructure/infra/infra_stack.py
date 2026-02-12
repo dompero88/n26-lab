@@ -30,7 +30,7 @@ class InfraStack(Stack):
                     "../app",
                     platform=ecr_assets.Platform.LINUX_AMD64 
                 ),
-                container_port=80,
+                container_port=8080,
                 environment={
                     "OLLAMA_ENDPOINT": "http://172.31.23.1:11434" 
                 }
