@@ -23,6 +23,11 @@ class InfraStack(Stack):
             cpu=256,            # 0.25 vCPU (Minimo costo)
             memory_limit_mib=512, # 0.5 GB RAM
             desired_count=1,
+            # AGGIUNTO: Forza l'architettura x86_64 per matchare GitHub Actions
+            runtime_platform=ecs.RuntimePlatform(
+                operating_system_family=ecs.OperatingSystemFamily.LINUX,
+                cpu_architecture=ecs.CpuArchitecture.X86_64
+            ),
             task_image_options=ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
                 image=ecs.ContainerImage.from_asset("../app"),
                 container_port=80,
