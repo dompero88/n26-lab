@@ -40,3 +40,7 @@ def analyze(request: PromptRequest):
         return {"ai_response": response.json().get("response")}
     except Exception as e:
         return {"error": "AI Service Unreachable", "details": str(e)}
+
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
