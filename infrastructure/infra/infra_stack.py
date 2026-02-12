@@ -1,9 +1,10 @@
 from aws_cdk import (
     Stack,
+    Duration,                # <--- AGGIUNTO QUESTO
     aws_ec2 as ec2,
     aws_ecs as ecs,
     aws_ecs_patterns as ecs_patterns,
-    aws_ecr_assets as ecr_assets,  # <--- AGGIUNTO QUESTO IMPORT
+    aws_ecr_assets as ecr_assets,
 )
 from constructs import Construct
 
@@ -27,7 +28,6 @@ class InfraStack(Stack):
             task_image_options=ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
                 image=ecs.ContainerImage.from_asset(
                     "../app",
-                    # USIAMO L'ENUM CORRETTO RICHIESTO DALL'ERRORE
                     platform=ecr_assets.Platform.LINUX_AMD64 
                 ),
                 container_port=80,
@@ -39,10 +39,11 @@ class InfraStack(Stack):
             assign_public_ip=True
         )
 
+        # CORREZIONE: Usiamo Duration.seconds() invece di numeri interi
         self.service.target_group.configure_health_check(
             path="/health",
-            interval=30,
-            timeout=5,
+            interval=Duration.seconds(30),
+            timeout=Duration.seconds(5),
             healthy_threshold_count=2,
             unhealthy_threshold_count=5
         )
