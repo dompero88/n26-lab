@@ -6,19 +6,25 @@ import re
 
 app = FastAPI()
 
-# Legge l'IP di Ollama dalle variabili d'ambiente (iniettate da ECS)
+# Configuration: Ollama IP from environment variables
 OLLAMA_HOST = os.getenv("OLLAMA_ENDPOINT", "http://172.31.23.1:11434")
 
 class PromptRequest(BaseModel):
     user_input: str
 
 def sanitize_pii(text: str) -> str:
-    # Maschera IBAN (Regex semplificata)
+    """
+    Sanitizes sensitive information (PII) from the text.
+    Currently masks IBANs using a standard pattern.
+    """
+    if not text:
+        return ""
+    # Simplified IBAN masking regex
     return re.sub(r'[A-Z]{2}\d{2}[A-Z0-9]{12,}', '[REDACTED_IBAN]', text)
 
 @app.get("/")
 def home():
-    return {"status": "ok", "service": "N26-AI-Guardrail"}
+    return {"status": "ok", "service": "AI-Security-Guardrail"}
 
 @app.get("/health")
 def health():
@@ -26,22 +32,26 @@ def health():
 
 @app.post("/analyze")
 def analyze(request: PromptRequest):
-    # 1. Security Guardrail: Prompt Injection
-    if "ignore previous instructions" in request.user_input.lower():
-        raise HTTPException(status_code=403, detail="Security Violation: Injection Detected")
+    # 1. INGRESS SECURITY: Prompt Injection Detection
+    # Basic check for common injection patterns
+    forbidden_phrases = ["ignore previous instructions", "system override", "disregard all rules"]
+    user_input_lower = request.user_input.lower()
+    
+    if any(phrase in user_input_lower for phrase in forbidden_phrases):
+        raise HTTPException(status_code=403, detail="Security Violation: Potential Injection Detected")
 
-    # 2. Data Governance: PII Masking
+    # 2. INGRESS DATA GOVERNANCE: PII Masking on input
     safe_prompt = sanitize_pii(request.user_input)
 
-    # 3. AI Inference (Chiamata a EC2 B)
+    # 3. AI INFERENCE (Call to EC2 Inference Layer)
     try:
         payload = {
-            "model": "tinyllama", # Assicurati che tinyllama sia scaricato nell'EC2
+            "model": "tinyllama",
             "prompt": f"Analyze this transaction risk: {safe_prompt}",
             "stream": False
         }
         
-        # MODIFICA: Alziamo il timeout a 60 secondi
+        # Timeout set to 60s to account for model loading/latency
         response = requests.post(
             f"{OLLAMA_HOST}/api/generate", 
             json=payload, 
@@ -49,9 +59,23 @@ def analyze(request: PromptRequest):
         )
         
         response.raise_for_status()
-        return {"ai_response": response.json().get("response")}
+        
+        # Extract raw response
+        raw_ai_response = response.json().get("response", "")
+
+        # 4. EGRESS SECURITY: PII Masking on output (The "Final Shield")
+        # We sanitize the AI output to prevent accidental data leakage
+        sanitized_ai_response = sanitize_pii(raw_ai_response)
+        
+        return {"ai_response": sanitized_ai_response}
         
     except requests.exceptions.Timeout:
-        return {"error": "AI Service Timeout", "details": "Il modello AI sta impiegando troppo tempo a rispondere. Riprova tra un istante."}
+        raise HTTPException(
+            status_code=504, 
+            detail="AI Service Timeout: The model is taking too long to respond."
+        )
     except Exception as e:
-        return {"error": "AI Service Unreachable", "details": str(e)}
+        raise HTTPException(
+            status_code=500, 
+            detail=f"AI Service Unreachable: {str(e)}"
+        )
